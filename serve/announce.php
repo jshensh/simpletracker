@@ -39,11 +39,13 @@ $keys = array(
     'event' => false,
     'left' => false,
     'compact' => false,
+    'uploaded' => false,
+    'downloaded' => false
 );
 
 $data = array();
 foreach ($keys as $key => $req) {
-    if (array_key_exists($key, $_GET)) {
+    if (isset($_GET[$key])) {
         $data[$key] = $_GET[$key];
     } else if ($req) {
         fail(sprintf('missing key: %s', $key));
@@ -52,6 +54,10 @@ foreach ($keys as $key => $req) {
 
 $data['info_hash'] = bin2hex($data['info_hash']);
 $data['peer_id'] = bin2hex($data['peer_id']);
+
+// if ($data['username'] === 'wcwfjds') {
+//     file_put_contents("/home/wwwroot/pt.imjs.work/serve/log.log", date('Y-m-d H:i:s') . "\n" . $_SERVER['HTTP_USER_AGENT'] . "\n" . json_encode($data) . "\n" . "\n\n", FILE_APPEND);
+// }
 
 $res = $db->query_params('SELECT user_id, passkey FROM users WHERE username = :username', array('username' => $data['username'])) or fail('db error');
 $user_row = $res->fetch() or fail('access denied');
@@ -103,10 +109,12 @@ $torrent_row = $res->fetch() or fail('no such torrent');
 $res = $db->query_params('SELECT peer_id FROM peers WHERE user_id = :user_id AND torrent_id = :torrent_id AND chosen_peer_id = :chosen_peer_id', array('user_id' => $user_row['user_id'], 'torrent_id' => $torrent_row['torrent_id'], 'chosen_peer_id' => $data['peer_id'])) or fail('db error');
 
 if (!($peer_row = $res->fetch())) {
-    $res = $db->query_params('INSERT INTO peers (user_id, torrent_id, chosen_peer_id, ip, port) VALUES (:user_id, :torrent_id, :chosen_peer_id, :ip, :port)', array('user_id' => $user_row['user_id'], 'torrent_id' => $torrent_row['torrent_id'], 'chosen_peer_id' => $data['peer_id'], 'ip' => $data['ip'], 'port' => $data['port']), 'peer_id');
+    $res = $db->query_params('INSERT INTO peers (user_id, torrent_id, chosen_peer_id, ip, port, uploaded, downloaded) VALUES (:user_id, :torrent_id, :chosen_peer_id, :ip, :port, :uploaded, :downloaded)', array('user_id' => $user_row['user_id'], 'torrent_id' => $torrent_row['torrent_id'], 'chosen_peer_id' => $data['peer_id'], 'ip' => $data['ip'], 'port' => $data['port'], 'uploaded' => $data['uploaded'] ?? 0, 'downloaded' => $data['downloaded'] ?? 0), 'peer_id');
     $peer_row = array('peer_id' => $res);
 } else {
-    $db->query_params('UPDATE peers SET ip = :ip, port = :port, last_announce = CURRENT_TIMESTAMP WHERE peer_id = :peer_id', array('ip' => $data['ip'], 'port' => $data['port'], 'peer_id' => $peer_row['peer_id'])) or fail('db error');
+    $uploaded = isset($data['uploaded']) ? (int)$data['uploaded'] : $res['uploaded'];
+    $downloaded = isset($data['downloaded']) ? (int)$data['downloaded'] : $res['downloaded'];
+    $db->query_params('UPDATE peers SET ip = :ip, port = :port, last_announce = CURRENT_TIMESTAMP, uploaded = :uploaded, downloaded = :downloaded WHERE peer_id = :peer_id', array('ip' => $data['ip'], 'port' => $data['port'], 'peer_id' => $peer_row['peer_id'], 'uploaded' => $uploaded, 'downloaded' => $downloaded)) or fail('db error');
 }
 
 if (array_key_exists('left', $data)) {

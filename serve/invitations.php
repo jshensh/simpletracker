@@ -4,9 +4,14 @@ require_once '../site.php';
 $db->connect();
 require_auth();
 
+if ((int) $_SESSION['user']['user_id'] !== 1) {
+    printf('邀请功能已关闭');
+    die;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
+
     if (!array_key_exists('email', $_POST)) {
         die;
     }

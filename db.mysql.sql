@@ -1,71 +1,167 @@
-SET FOREIGN_KEY_CHECKS=0;
+-- phpMyAdmin SQL Dump
+-- version 5.1.0
+-- https://www.phpmyadmin.net/
+--
+-- 主机： localhost
+-- 生成日期： 2022-04-02 16:49:30
+-- 服务器版本： 10.4.19-MariaDB-log
+-- PHP 版本： 7.4.19
 
-GRANT USAGE ON *.* TO 'simpletracker'@'localhost';
-DROP USER 'simpletracker'@'localhost';
-CREATE USER 'simpletracker'@'localhost' IDENTIFIED BY 'simpletracker';
-CREATE DATABASE simpletracker;
-USE simpletracker;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE IF NOT EXISTS `users` (
-    user_id int(10) unsigned NOT NULL AUTO_INCREMENT,
-    invited_by int(10) unsigned DEFAULT NULL,
-    username varchar(255) NOT NULL,
-    password varchar(255) NOT NULL,
-    passkey varchar(255) NOT NULL,
-    email varchar(255) NOT NULL,
-    PRIMARY KEY (`user_id`)
+--
+-- 数据库： `pt`
+--
+
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `invitations`
+--
+
+CREATE TABLE `invitations` (
+  `invitation_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `invitation_key` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-DROP TABLE IF EXISTS `torrents`;
-CREATE TABLE IF NOT EXISTS `torrents` (
-    torrent_id int(10) unsigned NOT NULL AUTO_INCREMENT,
-    user_id int(10) unsigned NOT NULL,
-    anonymous tinyint(1) DEFAULT 0,
-    name varchar(1023) NOT NULL,
-    description text NOT NULL,
-    data LONGBLOB NOT NULL,
-    submitted timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    info_hash char(40) NOT NULL,
-    total_size int(20) unsigned NOT NULL,
-    PRIMARY KEY (`torrent_id`),
-    CONSTRAINT torrent_user_fk FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE ON UPDATE CASCADE
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `peers`
+--
+
+CREATE TABLE `peers` (
+  `peer_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `torrent_id` int(10) UNSIGNED NOT NULL,
+  `chosen_peer_id` char(40) NOT NULL,
+  `ip` varchar(255) NOT NULL,
+  `port` int(11) NOT NULL,
+  `uploaded` bigint(20) NOT NULL DEFAULT 0,
+  `downloaded` bigint(20) NOT NULL DEFAULT 0,
+  `completed` tinyint(1) NOT NULL DEFAULT 0,
+  `last_announce` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-DROP TABLE IF EXISTS `peers`;
-SET FOREIGN_KEY_CHECKS=0;
-CREATE TABLE IF NOT EXISTS `peers` (
-    peer_id int(10) unsigned NOT NULL AUTO_INCREMENT,
-    user_id int(10) unsigned NOT NULL,
-    torrent_id int(10) unsigned NOT NULL,
-    chosen_peer_id char(40) NOT NULL,
-    ip varchar(255) NOT NULL,
-    port integer NOT NULL,
-    completed tinyint(1) NOT NULL DEFAULT 0,
-    last_announce timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`peer_id`),
-    CONSTRAINT `peer_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT `peer_torrent` FOREIGN KEY (`torrent_id`) REFERENCES `torrents` (`torrent_id`) ON DELETE CASCADE ON UPDATE CASCADE
+-- --------------------------------------------------------
+
+--
+-- 表的结构 `torrents`
+--
+
+CREATE TABLE `torrents` (
+  `torrent_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `anonymous` tinyint(1) DEFAULT 0,
+  `name` varchar(1023) NOT NULL,
+  `description` text NOT NULL,
+  `data` longblob NOT NULL,
+  `submitted` timestamp NOT NULL DEFAULT current_timestamp(),
+  `info_hash` char(40) NOT NULL,
+  `total_size` bigint(20) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-ALTER TABLE `peers` ADD UNIQUE `unique_index`(`user_id`, `torrent_id`, `chosen_peer_id`);
+-- --------------------------------------------------------
 
-DROP TABLE IF EXISTS `invitations`;
-SET FOREIGN_KEY_CHECKS=0;
-CREATE TABLE IF NOT EXISTS `invitations` (
-    invitation_id int(10) unsigned NOT NULL AUTO_INCREMENT,
-    user_id int(10) unsigned NOT NULL,
-    email varchar(255) NOT NULL,
-    invitation_key varchar(255) NOT NULL,
-    PRIMARY KEY (`invitation_id`),
-    CONSTRAINT `invited` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
+--
+-- 表的结构 `users`
+--
+
+CREATE TABLE `users` (
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `invited_by` int(10) UNSIGNED DEFAULT NULL,
+  `username` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `passkey` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-ALTER TABLE `invitations` ADD UNIQUE `unique_index`(`email`, `invitation_key`);
+--
+-- 转储表的索引
+--
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON *.* TO 'simpletracker'@'localhost';
+--
+-- 表的索引 `invitations`
+--
+ALTER TABLE `invitations`
+  ADD PRIMARY KEY (`invitation_id`),
+  ADD UNIQUE KEY `unique_index` (`email`,`invitation_key`),
+  ADD KEY `invited` (`user_id`);
 
-INSERT INTO users (username, password, passkey, email) VALUES ('simpletracker', '$2y$10$6xA.5jOqve6N3OTQ6v1pEe1mUOvP30DtNuk/TAgjhM87YXCuseOOm', 'a087597edaae687d7f3d71da5431fce2', '@');
--- password is simpletracker
+--
+-- 表的索引 `peers`
+--
+ALTER TABLE `peers`
+  ADD PRIMARY KEY (`peer_id`),
+  ADD UNIQUE KEY `unique_index` (`user_id`,`torrent_id`,`chosen_peer_id`),
+  ADD KEY `peer_torrent` (`torrent_id`);
 
-SET FOREIGN_KEY_CHECKS=1;
+--
+-- 表的索引 `torrents`
+--
+ALTER TABLE `torrents`
+  ADD PRIMARY KEY (`torrent_id`),
+  ADD KEY `torrent_user_fk` (`user_id`);
+
+--
+-- 表的索引 `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`user_id`);
+
+--
+-- 在导出的表使用AUTO_INCREMENT
+--
+
+--
+-- 使用表AUTO_INCREMENT `invitations`
+--
+ALTER TABLE `invitations`
+  MODIFY `invitation_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- 使用表AUTO_INCREMENT `peers`
+--
+ALTER TABLE `peers`
+  MODIFY `peer_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- 使用表AUTO_INCREMENT `torrents`
+--
+ALTER TABLE `torrents`
+  MODIFY `torrent_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- 使用表AUTO_INCREMENT `users`
+--
+ALTER TABLE `users`
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- 限制导出的表
+--
+
+--
+-- 限制表 `invitations`
+--
+ALTER TABLE `invitations`
+  ADD CONSTRAINT `invited` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- 限制表 `peers`
+--
+ALTER TABLE `peers`
+  ADD CONSTRAINT `peer_torrent` FOREIGN KEY (`torrent_id`) REFERENCES `torrents` (`torrent_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `peer_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- 限制表 `torrents`
+--
+ALTER TABLE `torrents`
+  ADD CONSTRAINT `torrent_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+COMMIT;
+

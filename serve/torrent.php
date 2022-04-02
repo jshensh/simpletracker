@@ -41,6 +41,14 @@ if ($row) {
     printf('<tr><th>Seeders</th><td><tt>%d</tt></td></tr>', $comp_res['complete']);
     printf('<tr><th>Leechers</th><td><tt>%d</tt></td></tr>', $comp_res['incomplete']);
 
+    $peers_res = $db->query_params('SELECT users.username, peers.uploaded, peers.downloaded, peers.completed FROM peers RIGHT JOIN users ON peers.user_id = users.user_id WHERE torrent_id = :torrent_id ORDER BY peers.completed DESC, peers.downloaded, peers.uploaded DESC', array('torrent_id' => $row['torrent_id'])) or die('db error');
+    $peers = $peers_res->fetchAll();
+    $peers = array_map(function($v) {
+        return "<tt>" . ($v['completed'] ? 'Seeder' : 'Leecher') . ": {$v['username']} - Uploaded: " . format_size($v['uploaded']) . ", Downloaded: " . format_size($v['downloaded']) . "</tt>";
+    }, $peers);
+
+    printf('<tr><th>Peers</th><td>%s</td></tr>', $peers ? implode('<br />', $peers) : 'None');
+
     printf('</table></div>');
 
     printf('<h1>Description</h1>');
